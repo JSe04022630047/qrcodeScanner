@@ -7,12 +7,10 @@ import (
 	"log"
 	"os"
 
-	// "image"
-	// _ "image/png" // Register PNG decoder
-	// "os"
-
-	// "github.com/makiuchi-d/gozxing"
-	// "github.com/makiuchi-d/gozxing/qrcode"
+	"github.com/go-vgo/robotgo"
+	"github.com/kbinani/screenshot"
+	"github.com/makiuchi-d/gozxing"
+	"github.com/makiuchi-d/gozxing/qrcode"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -29,6 +27,8 @@ import (
 var GitCommit string = "Unknown"
 var BuildTime string = "please compile with the script"
 var Version string = "a0" // TODO
+
+var globalQRReader gozxing.Reader = qrcode.NewQRCodeReader()
 
 type scannedCode struct {
 	theString string /*anything that can be scanned, only filtered to strings. binary data may be parsed into string and show garbage data*/
@@ -103,12 +103,21 @@ func main() {
 		} else {
 			imageOp, _, _ := image.Decode(fileOp)
 			showCropWindow(
-				mainWindow, 
+				mainWindow,
 				imageOp,
-				func(i image.Image) { // User hit accept
+				func(img image.Image) { // User hit accept
 					fmt.Println("cropped successfully")
-					showResultWindow(i)
-					
+					bmp, _ := gozxing.NewBinaryBitmapFromImage(img) // it is expected that images are always entered here
+
+					result, err := globalQRReader.Decode(bmp, nil)
+
+					if err == nil {
+						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
+					} else if _, ok := err.(gozxing.NotFoundException); ok{
+						fmt.Println("qrcode scanned failed, qrcode not found", err)
+					} else {
+						fmt.Println("qrcode scanned failed", err)
+					}
 				},
 				func() { // user hit cancled or exit
 					fmt.Println("cropping canceled")
@@ -121,9 +130,49 @@ func main() {
 	buttonCamera := widget.NewButtonWithIcon("Open Camera", theme.MediaPhotoIcon(), func() {
 		// TODO
 	})
-	buttonScreenCapture := widget.NewButtonWithIcon("Scan the screen", theme.ViewFullScreenIcon(), func() {
-		// TODO
-	})
+	buttonScreenCapture := widget.NewButtonWithIcon("Scan the screen", theme.ViewFullScreenIcon(),
+		func() {
+			// getting mouse location
+			mouseX, mouseY := robotgo.Location()
+
+			// getting display
+			displayIndex := 0
+			numDisplays := screenshot.NumActiveDisplays()
+			for i := 0; i < numDisplays; i++ {
+				bounds := screenshot.GetDisplayBounds(i)
+				// Check if mouse is within this monitor's rectangle
+				if mouseX >= bounds.Min.X && mouseX <= bounds.Max.X &&
+					mouseY >= bounds.Min.Y && mouseY <= bounds.Max.Y {
+					displayIndex = i
+					break
+				}
+			}
+
+			// prep screenshot
+			bounds := screenshot.GetDisplayBounds(displayIndex)
+			imagetopass, err := screenshot.CaptureRect(bounds)
+			if err != nil {
+				fmt.Println("failed to prep background:", err)
+				return
+			}
+			showCropWindow(mainWindow, imagetopass, func(img image.Image) {
+				if img != nil {
+					showResultWindow(img)
+					bmp, _ := gozxing.NewBinaryBitmapFromImage(img)
+					result, err := globalQRReader.Decode(bmp, nil)
+					if err == nil {
+						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
+					} else if _, ok := err.(gozxing.NotFoundException); ok{
+						fmt.Println("qrcode scanned failed, qrcode not found", err)
+					} else {
+						fmt.Println("qrcode scanned failed", err)
+					}
+				}
+			},
+				func() {
+					fmt.Println("screenshot canceled")
+				})
+		})
 
 	buttonHistory := widget.NewButtonWithIcon("History", theme.HistoryIcon(), func() {
 		// TODO
