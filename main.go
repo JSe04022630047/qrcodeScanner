@@ -108,6 +108,7 @@ func main() {
 				func(i image.Image) { // User hit accept
 					fmt.Println("cropped successfully")
 					showResultWindow(i)
+					
 				},
 				func() { // user hit cancled or exit
 					fmt.Println("cropping canceled")

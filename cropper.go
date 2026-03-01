@@ -11,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/fstanis/screenresolution"
 )
 
 // image cropper, AI magic (vibe coded) I don't know fyne backend stuff. probably going to learn when this is all over.
@@ -25,9 +27,9 @@ type handle struct {
 
 func newHandle(onDrag func(fyne.Delta)) *handle {
 	h := &handle{onDrag: onDrag}
-	h.circle = canvas.NewCircle(theme.PrimaryColor())
+	h.circle = canvas.NewCircle(theme.Color(theme.ColorNamePrimary))
 	h.circle.StrokeWidth = 1
-	h.circle.StrokeColor = theme.ForegroundColor()
+	h.circle.StrokeColor = theme.Color(theme.ColorNameForeground)
 	h.ExtendBaseWidget(h)
 	return h
 }
@@ -159,12 +161,38 @@ func showCropWindow(
 	var confirmed bool = false
 	cropWin := fyne.CurrentApp().NewWindow("Crop Image")
 
+	// since window is going to be the same aspect ratio as the image, calcuate the image aspect ratio
+	bounds := src.Bounds()
+    imgWidth := float32(bounds.Dx())
+    imgHeight := float32(bounds.Dy())
+    aspectRatio := imgHeight / imgWidth
+	
+	windowWidth := float32(800) // the window width default
+    if imgWidth < 400 { windowWidth = 400 } // clamp if image is lower than 400
+
+	// you can guess what this does
+	windowHeight := windowWidth * aspectRatio
+
+	// account for user screen
+	
+	screenSize := screenresolution.GetPrimary()
+	screenH := float32(screenSize.Height)
+	screenW := float32(screenSize.Width)
+	if windowWidth > screenW * 0.8 {
+		windowWidth = screenW * 0.8
+	    windowHeight = windowWidth * aspectRatio
+	}
+	if windowHeight > screenH * 0.8 {
+		windowHeight = screenH * 0.8
+	    windowWidth = windowHeight / aspectRatio
+	}
+	
 	// The Image 
 	imgWidget := canvas.NewImageFromImage(src)
 	imgWidget.FillMode = canvas.ImageFillStretch
 	imgWidget.SetMinSize(fyne.NewSize(500,500))
-
-
+	
+	// button height moved to below the button container is "finished"
 
 	// selector
 	selector := newCropSelector(imgWidget)
@@ -195,7 +223,7 @@ func showCropWindow(
 		cropWin.Close()
 	})
 	confirmButton.Importance = widget.HighImportance
-
+	
 	// 3. Layout: Stick to Bottom Right
 	// Spacer pushes everything after it to the right
 	buttonStrip := container.NewHBox(
@@ -203,6 +231,9 @@ func showCropWindow(
 		cancelButton,
 		confirmButton,
 	)
+	
+	// buttons spaces
+	totalHeight := windowHeight + buttonStrip.MinSize().Height
 
 	// Border layout: Center is the image, Bottom is the button strip
 	mainLayout := container.NewBorder(nil, buttonStrip, nil, nil, centerStack)
@@ -214,8 +245,12 @@ func showCropWindow(
 			onCancel()
 		}
 	})
+
+	// final stuff before showing to the user
 	cropWin.SetContent(mainLayout)
-	cropWin.Resize(fyne.NewSize(600, 500))
+	cropWin.Resize(fyne.NewSize(windowWidth, totalHeight))
+	cropWin.CenterOnScreen()
+	cropWin.SetFixedSize(true)
 	cropWin.Show()
 
 }
