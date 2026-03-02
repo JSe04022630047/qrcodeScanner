@@ -1,10 +1,12 @@
 - [x] Useless feature
 - [x] Main Menu
-- [ ] Image Cropper
-  - [ ] Fix Cropper
-- [ ] File Scan
-- [ ] Camera Scan
-- [ ] Screen Capture Scan
+- [x] Image Cropper
+  - [x] Fix Cropper
+- [x] File Scan
+- [ ] ~~Camera Scan~~ discarded
+- [x] Screen Capture Scan
 - [ ] Scan history
+  - [ ] data involving in history
+- [ ] Scan result
 - [ ] Code Creation Menu
 - [ ] Documentation

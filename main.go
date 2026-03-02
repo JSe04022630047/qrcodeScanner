@@ -26,13 +26,12 @@ import (
 
 var GitCommit string = "Unknown"
 var BuildTime string = "please compile with the script"
-var Version string = "a0" // TODO
+var Version string = "a0" // This automatically got assigned when compiling with the script, please run the script to push in production
 
 var globalQRReader gozxing.Reader = qrcode.NewQRCodeReader()
 
-type scannedCode struct {
-	theString string /*anything that can be scanned, only filtered to strings. binary data may be parsed into string and show garbage data*/
-}
+// variable that the progam actually used
+var scannedHistory []scannedCode = nil
 
 // Scan QR code stuff below
 
@@ -55,6 +54,8 @@ func handleFlags() {
 
 func main() {
 	handleFlags()
+
+	
 
 	theApp := app.New()
 	mainWindow := theApp.NewWindow("QR Scanner Tool")
@@ -126,10 +127,6 @@ func main() {
 		}
 
 	})
-
-	buttonCamera := widget.NewButtonWithIcon("Open Camera", theme.MediaPhotoIcon(), func() {
-		// TODO
-	})
 	buttonScreenCapture := widget.NewButtonWithIcon("Scan the screen", theme.ViewFullScreenIcon(),
 		func() {
 			// getting mouse location
@@ -196,7 +193,7 @@ func main() {
 			container.NewVBox(mainOptionsLabel,
 				container.NewHBox(
 					buttonPickFile,
-					buttonCamera,
+					// buttonCamera,
 					buttonScreenCapture,
 				),
 				mainAltOptionsLabel,
@@ -214,12 +211,6 @@ func main() {
 		layout.NewSpacer(),
 		mainFunctionButtons,
 		layout.NewSpacer(),
-		/* test stuff
-		   label,
-		   button,
-		   content1,
-		   content2,
-		*/
 	))
 
 	mainWindow.ShowAndRun()
