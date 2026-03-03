@@ -6,9 +6,8 @@ import (
 	"image"
 	"log"
 	"os"
+	"strings"
 
-	"github.com/go-vgo/robotgo"
-	"github.com/kbinani/screenshot"
 	"github.com/makiuchi-d/gozxing"
 	"github.com/makiuchi-d/gozxing/qrcode"
 
@@ -29,13 +28,28 @@ var BuildTime string = "please compile with the script"
 var Version string = "a0" // This automatically got assigned when compiling with the script, please run the script to push in production
 
 var globalQRReader gozxing.Reader = qrcode.NewQRCodeReader()
+var globalEncoder gozxing.Writer = qrcode.NewQRCodeWriter()
 
 // variable that the progam actually used
 var scannedHistory []scannedCode = nil
 
-// Scan QR code stuff below
+func printScanHistoryArr(array []scannedCode) {
+	if array == nil {
+		fmt.Println("can't print loaded scan history, no entry")
+		return
+	}
 
-// end qr code scan stuff
+	var out strings.Builder
+	out.WriteString("below is scan histroy that program loaded\n")
+	for i := range array {
+		out.WriteString(fmt.Sprintf("- %s\n", array[i]))
+	}
+	fmt.Println(out.String())
+}
+
+func printCurrScanHistory() {
+	printScanHistoryArr(scannedHistory)
+}
 
 func handleFlags() {
 	versionFlag := flag.Bool("version", false, "Print version information and exit")
@@ -55,7 +69,12 @@ func handleFlags() {
 func main() {
 	handleFlags()
 
-	
+	// the argument is for recursive, it returns true if successfully decoded the saved history, else return false.
+	// the return may not be needed but I thought its better to indicate if loading history failed
+	loadHistory(0)
+
+	//debug print
+	fmt.Print(scannedHistory)
 
 	theApp := app.New()
 	mainWindow := theApp.NewWindow("QR Scanner Tool")
@@ -114,7 +133,10 @@ func main() {
 
 					if err == nil {
 						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
-					} else if _, ok := err.(gozxing.NotFoundException); ok{
+						addEntry(*result)
+						printCurrScanHistory()
+						showResultWindow(scannedHistory[0]) // sorting from addEntry always make the latest one the 0
+					} else if _, ok := err.(gozxing.NotFoundException); ok {
 						fmt.Println("qrcode scanned failed, qrcode not found", err)
 					} else {
 						fmt.Println("qrcode scanned failed", err)
@@ -129,51 +151,30 @@ func main() {
 	})
 	buttonScreenCapture := widget.NewButtonWithIcon("Scan the screen", theme.ViewFullScreenIcon(),
 		func() {
-			// getting mouse location
-			mouseX, mouseY := robotgo.Location()
-
-			// getting display
-			displayIndex := 0
-			numDisplays := screenshot.NumActiveDisplays()
-			for i := 0; i < numDisplays; i++ {
-				bounds := screenshot.GetDisplayBounds(i)
-				// Check if mouse is within this monitor's rectangle
-				if mouseX >= bounds.Min.X && mouseX <= bounds.Max.X &&
-					mouseY >= bounds.Min.Y && mouseY <= bounds.Max.Y {
-					displayIndex = i
-					break
-				}
-			}
-
-			// prep screenshot
-			bounds := screenshot.GetDisplayBounds(displayIndex)
-			imagetopass, err := screenshot.CaptureRect(bounds)
-			if err != nil {
-				fmt.Println("failed to prep background:", err)
-				return
-			}
-			showCropWindow(mainWindow, imagetopass, func(img image.Image) {
-				if img != nil {
-					showResultWindow(img)
-					bmp, _ := gozxing.NewBinaryBitmapFromImage(img)
-					result, err := globalQRReader.Decode(bmp, nil)
-					if err == nil {
-						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
-					} else if _, ok := err.(gozxing.NotFoundException); ok{
-						fmt.Println("qrcode scanned failed, qrcode not found", err)
-					} else {
-						fmt.Println("qrcode scanned failed", err)
-					}
+			showScreenCapCropWindow(mainWindow, func(img image.Image) {
+				showTestResultWindow(img)
+				bmp, _ := gozxing.NewBinaryBitmapFromImage(img)
+				result, err := globalQRReader.Decode(bmp, nil)
+				if err == nil {
+					fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
+				} else if _, ok := err.(gozxing.NotFoundException); ok {
+					fmt.Println("qrcode scanned failed, qrcode not found", err)
+				} else {
+					fmt.Println("qrcode scanned failed", err)
 				}
 			},
-				func() {
-					fmt.Println("screenshot canceled")
-				})
+				func() { // user hit cancled or exit
+					fmt.Println("cropping canceled")
+				},
+			)
 		})
 
 	buttonHistory := widget.NewButtonWithIcon("History", theme.HistoryIcon(), func() {
 		// TODO
 	})
+	if scannedHistory == nil {
+		buttonHistory.Disable()
+	}
 
 	buttonCreateQR := widget.NewButtonWithIcon("Create QR Code", theme.DocumentCreateIcon(), func() {
 		// TODO
@@ -213,7 +214,12 @@ func main() {
 		layout.NewSpacer(),
 	))
 
+	mainWindow.SetOnClosed(func() {
+		updateHistoryFile()
+	})
+
 	mainWindow.ShowAndRun()
+
 }
 
 func changeLabel(l *widget.Label) {

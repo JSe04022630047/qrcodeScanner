@@ -6,7 +6,7 @@
 - [ ] ~~Camera Scan~~ discarded
 - [x] Screen Capture Scan
 - [ ] Scan history
-  - [ ] data involving in history
-- [ ] Scan result
+  - [x] data involving in history
+- [ ] Scan result page
 - [ ] Code Creation Menu
 - [ ] Documentation

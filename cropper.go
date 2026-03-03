@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/fstanis/screenresolution"
+	"github.com/go-vgo/robotgo"
+	"github.com/kbinani/screenshot"
 )
 
 // image cropper, AI magic (vibe coded) I don't know fyne backend stuff. probably going to learn when this is all over.
@@ -39,13 +41,13 @@ func (h *handle) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (h *handle) Dragged(e *fyne.DragEvent) { h.onDrag(e.Dragged) }
-func (h *handle) DragEnd() {}
+func (h *handle) DragEnd()                  {}
 
 // The Main Selector Widget
 type cropSelector struct {
 	widget.BaseWidget
-	rect   *canvas.Rectangle
-	handle *handle
+	rect      *canvas.Rectangle
+	handle    *handle
 	container fyne.CanvasObject
 }
 
@@ -55,31 +57,33 @@ func newCropSelector(bounds fyne.CanvasObject) *cropSelector {
 	cs.rect.StrokeColor = theme.Color(theme.ColorNamePrimary)
 
 	cs.handle = newHandle(func(delta fyne.Delta) {
-    parent := cs.container
-    if parent == nil { return }
-    
-    parentSize := parent.Size()
-    currentPos := cs.Position()
-    
-    // Calculate intended new size
-    newSize := cs.Size().Add(delta)
+		parent := cs.container
+		if parent == nil {
+			return
+		}
 
-    // Clamp Width: cannot be smaller than 30 or larger than (ParentWidth - CurrentX)
-    if newSize.Width < 30 {
-        newSize.Width = 30
-    } else if currentPos.X + newSize.Width > parentSize.Width {
-        newSize.Width = parentSize.Width - currentPos.X
-    }
+		parentSize := parent.Size()
+		currentPos := cs.Position()
 
-    // Clamp Height: cannot be smaller than 30 or larger than (ParentHeight - CurrentY)
-    if newSize.Height < 30 {
-        newSize.Height = 30
-    } else if currentPos.Y + newSize.Height > parentSize.Height {
-        newSize.Height = parentSize.Height - currentPos.Y
-    }
+		// Calculate intended new size
+		newSize := cs.Size().Add(delta)
 
-    cs.Resize(newSize)
-})
+		// Clamp Width: cannot be smaller than 30 or larger than (ParentWidth - CurrentX)
+		if newSize.Width < 30 {
+			newSize.Width = 30
+		} else if currentPos.X+newSize.Width > parentSize.Width {
+			newSize.Width = parentSize.Width - currentPos.X
+		}
+
+		// Clamp Height: cannot be smaller than 30 or larger than (ParentHeight - CurrentY)
+		if newSize.Height < 30 {
+			newSize.Height = 30
+		} else if currentPos.Y+newSize.Height > parentSize.Height {
+			newSize.Height = parentSize.Height - currentPos.Y
+		}
+
+		cs.Resize(newSize)
+	})
 
 	cs.ExtendBaseWidget(cs)
 	return cs
@@ -98,53 +102,53 @@ func (cs *cropSelector) Resize(s fyne.Size) {
 }
 
 func (cs *cropSelector) GetCropRect(imgWidget *canvas.Image, originalImg image.Image) image.Rectangle {
-    // 1. Calculate the scale ratio
-    // Fyne uses "Points", the image uses "Pixels"
-    viewSize := imgWidget.Size()
-    imgSize := originalImg.Bounds().Size()
-    
-    ratioX := float32(imgSize.X) / viewSize.Width
-    ratioY := float32(imgSize.Y) / viewSize.Height
+	// 1. Calculate the scale ratio
+	// Fyne uses "Points", the image uses "Pixels"
+	viewSize := imgWidget.Size()
+	imgSize := originalImg.Bounds().Size()
 
-    // 2. Calculate position relative to the image widget
-    // Subtracting imgWidget.Position() handles cases where the image is centered
-    relPos := cs.Position().Subtract(imgWidget.Position())
-    
-    x1 := int(relPos.X * ratioX)
-    y1 := int(relPos.Y * ratioY)
-    x2 := x1 + int(cs.Size().Width * ratioX)
-    y2 := y1 + int(cs.Size().Height * ratioY)
+	ratioX := float32(imgSize.X) / viewSize.Width
+	ratioY := float32(imgSize.Y) / viewSize.Height
 
-    return image.Rect(x1, y1, x2, y2)
+	// 2. Calculate position relative to the image widget
+	// Subtracting imgWidget.Position() handles cases where the image is centered
+	relPos := cs.Position().Subtract(imgWidget.Position())
+
+	x1 := int(relPos.X * ratioX)
+	y1 := int(relPos.Y * ratioY)
+	x2 := x1 + int(cs.Size().Width*ratioX)
+	y2 := y1 + int(cs.Size().Height*ratioY)
+
+	return image.Rect(x1, y1, x2, y2)
 }
 
 func (cs *cropSelector) Dragged(e *fyne.DragEvent) {
-    if cs.container == nil {
-        return
-    }
+	if cs.container == nil {
+		return
+	}
 
-    // Get the size of the image widget
-    boundarySize := cs.container.Size()
-    currentSize := cs.Size()
-    
-    // Calculate new position
-    newPos := cs.Position().Add(e.Dragged)
+	// Get the size of the image widget
+	boundarySize := cs.container.Size()
+	currentSize := cs.Size()
 
-    // Clamp X to [0, ImageWidth - SelectorWidth]
-    if newPos.X < 0 {
-        newPos.X = 0
-    } else if newPos.X+currentSize.Width > boundarySize.Width {
-        newPos.X = boundarySize.Width - currentSize.Width
-    }
+	// Calculate new position
+	newPos := cs.Position().Add(e.Dragged)
 
-    // Clamp Y to [0, ImageHeight - SelectorHeight]
-    if newPos.Y < 0 {
-        newPos.Y = 0
-    } else if newPos.Y+currentSize.Height > boundarySize.Height {
-        newPos.Y = boundarySize.Height - currentSize.Height
-    }
+	// Clamp X to [0, ImageWidth - SelectorWidth]
+	if newPos.X < 0 {
+		newPos.X = 0
+	} else if newPos.X+currentSize.Width > boundarySize.Width {
+		newPos.X = boundarySize.Width - currentSize.Width
+	}
 
-    cs.Move(newPos)
+	// Clamp Y to [0, ImageHeight - SelectorHeight]
+	if newPos.Y < 0 {
+		newPos.Y = 0
+	} else if newPos.Y+currentSize.Height > boundarySize.Height {
+		newPos.Y = boundarySize.Height - currentSize.Height
+	}
+
+	cs.Move(newPos)
 }
 
 func (cs *cropSelector) DragEnd() {
@@ -163,35 +167,37 @@ func showCropWindow(
 
 	// since window is going to be the same aspect ratio as the image, calcuate the image aspect ratio
 	bounds := src.Bounds()
-    imgWidth := float32(bounds.Dx())
-    imgHeight := float32(bounds.Dy())
-    aspectRatio := imgHeight / imgWidth
-	
+	imgWidth := float32(bounds.Dx())
+	imgHeight := float32(bounds.Dy())
+	aspectRatio := imgHeight / imgWidth
+
 	windowWidth := float32(800) // the window width default
-    if imgWidth < 400 { windowWidth = 400 } // clamp if image is lower than 400
+	if imgWidth < 400 {
+		windowWidth = 400
+	} // clamp if image is lower than 400
 
 	// you can guess what this does
 	windowHeight := windowWidth * aspectRatio
 
 	// account for user screen
-	
+
 	screenSize := screenresolution.GetPrimary()
 	screenH := float32(screenSize.Height)
 	screenW := float32(screenSize.Width)
-	if windowWidth > screenW * 0.8 {
+	if windowWidth > screenW*0.8 {
 		windowWidth = screenW * 0.8
-	    windowHeight = windowWidth * aspectRatio
+		windowHeight = windowWidth * aspectRatio
 	}
-	if windowHeight > screenH * 0.8 {
+	if windowHeight > screenH*0.8 {
 		windowHeight = screenH * 0.8
-	    windowWidth = windowHeight / aspectRatio
+		windowWidth = windowHeight / aspectRatio
 	}
-	
-	// The Image 
+
+	// The Image
 	imgWidget := canvas.NewImageFromImage(src)
 	imgWidget.FillMode = canvas.ImageFillStretch
-	imgWidget.SetMinSize(fyne.NewSize(500,500))
-	
+	imgWidget.SetMinSize(fyne.NewSize(500, 500))
+
 	// button height moved to below the button container is "finished"
 
 	// selector
@@ -219,11 +225,11 @@ func showCropWindow(
 		draw.Draw(subImg, subImg.Bounds(), src, cropRect.Min, draw.Src)
 
 		// 3. Send the cropped image back to the caller
-		onCrop(subImg)
 		cropWin.Close()
+		onCrop(subImg)
 	})
 	confirmButton.Importance = widget.HighImportance
-	
+
 	// 3. Layout: Stick to Bottom Right
 	// Spacer pushes everything after it to the right
 	buttonStrip := container.NewHBox(
@@ -231,7 +237,7 @@ func showCropWindow(
 		cancelButton,
 		confirmButton,
 	)
-	
+
 	// buttons spaces
 	totalHeight := windowHeight + buttonStrip.MinSize().Height
 
@@ -258,16 +264,16 @@ func showCropWindow(
 // end crop stuff
 
 // test
-func showResultWindow(cropped image.Image) {
+func showTestResultWindow(cropped image.Image) {
 	// 1. Create the new window
 	resWin := fyne.CurrentApp().NewWindow("Cropped Result")
-	
+
 	// 2. Convert standard image.Image to a Fyne Canvas Image
 	uiImg := canvas.NewImageFromImage(cropped)
-	
+
 	// Use Original mode so it doesn't stretch and looks sharp
 	uiImg.FillMode = canvas.ImageFillOriginal
-	
+
 	// 3. Add a "Close" button for convenience
 	closeBtn := widget.NewButton("Close", func() {
 		resWin.Close()
@@ -276,8 +282,46 @@ func showResultWindow(cropped image.Image) {
 	// 4. Layout the window
 	// Using NewCenter ensures the image stays in the middle
 	content := container.NewBorder(nil, closeBtn, nil, nil, container.NewCenter(uiImg))
-	
+
 	resWin.SetContent(content)
 	resWin.Resize(fyne.NewSize(float32(cropped.Bounds().Dx())+40, float32(cropped.Bounds().Dy())+80))
 	resWin.Show()
+}
+
+// refactored this logic, now it calls the above crop window
+func showScreenCapCropWindow(theWindow fyne.Window, onCrop func(image.Image), onCancel func()) {
+	// getting mouse location
+	mouseX, mouseY := robotgo.Location()
+
+	// getting display
+	displayIndex := 0
+	numDisplays := screenshot.NumActiveDisplays()
+	for i := 0; i < numDisplays; i++ {
+		bounds := screenshot.GetDisplayBounds(i)
+		// Check if mouse is within this monitor's rectangle
+		if mouseX >= bounds.Min.X && mouseX <= bounds.Max.X &&
+			mouseY >= bounds.Min.Y && mouseY <= bounds.Max.Y {
+			displayIndex = i
+			break
+		}
+	}
+
+	// prep screenshot
+	bounds := screenshot.GetDisplayBounds(displayIndex)
+	imagetopass, err := screenshot.CaptureRect(bounds)
+	if err != nil {
+		fmt.Println("failed to prep background:", err)
+		return
+	}
+	showCropWindow(theWindow, imagetopass, func(img image.Image) {
+		if img != nil {
+			onCrop(img)
+		} else {
+			onCrop(nil)
+		}
+	},
+		func() {
+			fmt.Println("screenshot canceled")
+			onCancel()
+		})
 }
