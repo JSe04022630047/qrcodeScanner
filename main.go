@@ -74,7 +74,7 @@ func main() {
 	loadHistory(0)
 
 	//debug print
-	fmt.Print(scannedHistory)
+	printCurrScanHistory()
 
 	theApp := app.New()
 	mainWindow := theApp.NewWindow("QR Scanner Tool")
@@ -170,7 +170,7 @@ func main() {
 		})
 
 	buttonHistory := widget.NewButtonWithIcon("History", theme.HistoryIcon(), func() {
-		// TODO
+		showHistoryWindow()
 	})
 	if scannedHistory == nil {
 		buttonHistory.Disable()
