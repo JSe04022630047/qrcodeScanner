@@ -47,7 +47,7 @@ func (e *ReadOnlyEntry) TypedKey(k *fyne.KeyEvent) {
 // DoubleTap/SecondaryTap/Paste can also be overridden if you want to block context menus
 func (e *ReadOnlyEntry) Paste(s string) {}
 
-func showResultWindow(result scannedCode) {
+func showResultWindow(result scannedCode, callerWin fyne.Window, index int) {
 	resultWin := fyne.CurrentApp().NewWindow("Result")
 	
 	titleLabel := widget.NewLabel("Result")
@@ -86,10 +86,20 @@ func showResultWindow(result scannedCode) {
 	openUrlButton := widget.NewButtonWithIcon("Open in web browser", theme.SearchIcon(), func() {
 		browser.OpenURL(result.Text)
 	})
-
+	
 	if !isValidURI(result.Text, []string{"http", "https"}){
 		openUrlButton.Hide()
 	}
+
+	removeEntryButton := widget.NewButtonWithIcon("Remove", theme.ContentClearIcon(), func() {
+		removeEntry(index)
+		callerWin.SetContent(generateButtonsWithScroll(callerWin))
+		if (len(scannedHistory) == 0 && callerWin != nil){
+			callerWin.Close()
+		}
+		resultWin.Close()
+	})
+	if index == -1 { removeEntryButton.Hide()}
 
 	copyTextButton := widget.NewButtonWithIcon("Copy", theme.ContentCopyIcon(), func() {
 		fyne.CurrentApp().Clipboard().SetContent(result.Text)
@@ -102,6 +112,7 @@ func showResultWindow(result scannedCode) {
 
 	buttonStrip := container.NewHBox(
 		openUrlButton,
+		removeEntryButton,
 		layout.NewSpacer(),
 		copyTextButton,
 		closeButton,
@@ -151,21 +162,31 @@ func (b *SubtitleButton) CreateRenderer() fyne.WidgetRenderer {
 
 func showHistoryWindow() {
 	histroyWin := fyne.CurrentApp().NewWindow("History")
+	scroll := generateButtonsWithScroll(histroyWin)
+	histroyWin.SetContent(scroll)
+	histroyWin.Resize(fyne.NewSquareSize(600))
+	histroyWin.CenterOnScreen()
+	histroyWin.Show()
+}
+
+func generateButtons(callerWin fyne.Window) *fyne.Container {
 	buttonList := container.NewVBox()
 
 	for i := 0; i < len(scannedHistory); i++ {
 		index := i // capture index
 		var item scannedCode = scannedHistory[index] 
 		button := NewSubtitleButton(item.Text, strconv.FormatInt(item.Timestamp, 10), func ()  {
-			showResultWindow(item)
+			showResultWindow(item, callerWin, index)
 		})
 		buttonList.Add(button)
 	}
+	return buttonList
+}
+
+func generateButtonsWithScroll(callerWin fyne.Window) *container.Scroll {
+	buttonList := generateButtons(callerWin)
 	scroll := container.NewVScroll(buttonList)
-	histroyWin.SetContent(scroll)
-	histroyWin.Resize(fyne.NewSquareSize(600))
-	histroyWin.CenterOnScreen()
-	histroyWin.Show()
+	return scroll
 }
 
 func isEncodable[T int | gozxing.BarcodeFormat](format T) bool {

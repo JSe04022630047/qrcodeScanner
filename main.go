@@ -28,6 +28,7 @@ var BuildTime string = "please compile with the script"
 var Version string = "a0" // This automatically got assigned when compiling with the script, please run the script to push in production
 
 var globalQRReader gozxing.Reader = qrcode.NewQRCodeReader()
+var HistoryButton *widget.Button = nil
 
 // variable that the progam actually used
 var scannedHistory []scannedCode = nil
@@ -134,7 +135,7 @@ func main() {
 						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
 						addEntry(*result)
 						printCurrScanHistory()
-						showResultWindow(scannedHistory[0]) // sorting from addEntry always make the latest one the 0
+						showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntry always make the latest one the 0
 					} else if _, ok := err.(gozxing.NotFoundException); ok {
 						fmt.Println("qrcode scanned failed, qrcode not found", err)
 					} else {
@@ -151,11 +152,16 @@ func main() {
 	buttonScreenCapture := widget.NewButtonWithIcon("Scan the screen", theme.ViewFullScreenIcon(),
 		func() {
 			showScreenCapCropWindow(mainWindow, func(img image.Image) {
-				showTestResultWindow(img)
+				fmt.Println("cropped from ss successfully")
+
 				bmp, _ := gozxing.NewBinaryBitmapFromImage(img)
 				result, err := globalQRReader.Decode(bmp, nil)
+
 				if err == nil {
 					fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
+					addEntry(*result)
+					printCurrScanHistory()
+					showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntry always make the latest one the 0
 				} else if _, ok := err.(gozxing.NotFoundException); ok {
 					fmt.Println("qrcode scanned failed, qrcode not found", err)
 				} else {
@@ -171,9 +177,10 @@ func main() {
 	buttonHistory := widget.NewButtonWithIcon("History", theme.HistoryIcon(), func() {
 		showHistoryWindow()
 	})
-	if (len(scannedHistory) < 1) {
+	if len(scannedHistory) < 1 {
 		buttonHistory.Disable()
 	}
+	HistoryButton = buttonHistory
 
 	buttonCreateQR := widget.NewButtonWithIcon("Create QR Code", theme.DocumentCreateIcon(), func() {
 		// TODO
@@ -293,4 +300,13 @@ func showVersionDialogv2(win fyne.Window) {
 	popup = widget.NewModalPopUp(mainLayout, win.Canvas())
 	// popup.Resize(fyne.NewSize(350, 200))
 	popup.Show()
+}
+
+func ChangeHistoryButtonStatus() {
+	historyButton := HistoryButton
+	if len(scannedHistory) < 1 {
+		historyButton.Disable()
+	} else {
+		historyButton.Enable()
+	}
 }

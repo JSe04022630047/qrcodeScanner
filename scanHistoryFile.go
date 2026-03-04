@@ -160,6 +160,13 @@ func addEntry(result gozxing.Result){
     if len(scannedHistory) > 50 {
         scannedHistory = scannedHistory[:50] // clamp to 50 entries including index 0
     }                                        // probably going to be configurable in the future
+    ChangeHistoryButtonStatus()
+}
+
+func removeEntry(index int) {
+    scannedHistory = append(scannedHistory[:index], scannedHistory[index+1:]...)
+    sortHistory() // just in case, just in case....
+    ChangeHistoryButtonStatus()
 }
 
 // end file history stuff
