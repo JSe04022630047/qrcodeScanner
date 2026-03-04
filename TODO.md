@@ -5,8 +5,8 @@
 - [x] File Scan
 - [ ] ~~Camera Scan~~ discarded
 - [x] Screen Capture Scan
-- [ ] Scan history
+- [x] Scan history
   - [x] data involving in history
-- [ ] Scan result page
+- [x] Scan result page
 - [ ] Code Creation Menu
 - [ ] Documentation

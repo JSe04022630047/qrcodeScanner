@@ -28,7 +28,6 @@ var BuildTime string = "please compile with the script"
 var Version string = "a0" // This automatically got assigned when compiling with the script, please run the script to push in production
 
 var globalQRReader gozxing.Reader = qrcode.NewQRCodeReader()
-var globalEncoder gozxing.Writer = qrcode.NewQRCodeWriter()
 
 // variable that the progam actually used
 var scannedHistory []scannedCode = nil
@@ -172,7 +171,7 @@ func main() {
 	buttonHistory := widget.NewButtonWithIcon("History", theme.HistoryIcon(), func() {
 		showHistoryWindow()
 	})
-	if scannedHistory == nil {
+	if (len(scannedHistory) < 1) {
 		buttonHistory.Disable()
 	}
 
@@ -181,7 +180,7 @@ func main() {
 	})
 
 	// main labels
-	mainOptionsLabel := widget.NewLabel("Select Operation")
+	mainOptionsLabel := widget.NewLabel("Scan QR Codes")
 	mainOptionsLabel.Alignment = fyne.TextAlignCenter
 	mainOptionsLabel.TextStyle.Bold = true
 
