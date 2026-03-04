@@ -13,7 +13,7 @@ set BUILD_TIME=%date% %time%
 set VERSION="a1"
 
 :: Run the build
-go build -ldflags "-X main.GitCommit=%GIT_HASH% -X 'main.BuildTime=%BUILD_TIME%' -X main.Version=%VERSION%" -o build/QRScan.exe
+go build -ldflags "-H windowsgui -X main.GitCommit=%GIT_HASH% -X 'main.BuildTime=%BUILD_TIME%' -X main.Version=%VERSION%" -o build/QRScan.exe
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
