@@ -4,13 +4,13 @@ import (
 	"errors"
 	"image"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -20,6 +20,8 @@ import (
 	"github.com/makiuchi-d/gozxing/qrcode"
 	"github.com/pkg/browser"
 )
+
+var HistoryWindow fyne.Window = nil
 
 // new entry widget, appearing as normal but content can't change
 type ReadOnlyEntry struct {
@@ -49,7 +51,7 @@ func (e *ReadOnlyEntry) Paste(s string) {}
 
 func showResultWindow(result scannedCode, callerWin fyne.Window, index int) {
 	resultWin := fyne.CurrentApp().NewWindow("Result")
-	
+
 	titleLabel := widget.NewLabel("Result")
 	// content of the qrcode
 	stringEntry := NewReadOnlyEntry()
@@ -58,17 +60,16 @@ func showResultWindow(result scannedCode, callerWin fyne.Window, index int) {
 
 	stringEntry.SetText(result.Text)
 	formatEntry.SetText(gozxing.BarcodeFormat(result.Format).String()) // hack yes but it works so I don't bother
-	tm := time.Unix(result.Timestamp, 0) // we already converted the milisec to normal seconds
+	tm := time.Unix(result.Timestamp, 0)                               // we already converted the milisec to normal seconds
 	timestampEntry.SetText(tm.Format(time.RFC3339))
 
-	
 	// image stuff here, I wish this works better
 	labelNotEncodeable := widget.NewLabel("")
 
-	img, err := encodeBasedOnFormat(result) 
+	img, err := encodeBasedOnFormat(result)
 	var qrCanvas *canvas.Image
 	if err != nil {
-		labelNotEncodeable.SetText("No encoder format found for "+formatEntry.Text)
+		labelNotEncodeable.SetText("No encoder format found for " + formatEntry.Text)
 		labelNotEncodeable.SizeName = theme.SizeNameHeadingText
 	} else {
 		qrCanvas = canvas.NewImageFromImage(img)
@@ -86,20 +87,31 @@ func showResultWindow(result scannedCode, callerWin fyne.Window, index int) {
 	openUrlButton := widget.NewButtonWithIcon("Open in web browser", theme.SearchIcon(), func() {
 		browser.OpenURL(result.Text)
 	})
-	
-	if !isValidURI(result.Text, []string{"http", "https"}){
+
+	if !isValidURI(result.Text, []string{"http", "https"}) {
 		openUrlButton.Hide()
 	}
 
 	removeEntryButton := widget.NewButtonWithIcon("Remove", theme.ContentClearIcon(), func() {
-		removeEntry(index)
-		callerWin.SetContent(generateButtonsWithScroll(callerWin))
-		if (len(scannedHistory) == 0 && callerWin != nil){
-			callerWin.Close()
-		}
-		resultWin.Close()
+		dialog.ShowConfirm("Confirmation", "Are you sure you want to delete this?",
+			func(b bool) {
+				if b {
+					removeEntry(index)
+					if callerWin != nil {
+						callerWin.SetContent(generateButtonsWithScroll(callerWin))
+						if len(scannedHistory) == 0 && callerWin != nil {
+							callerWin.Close()
+						}
+					}
+					resultWin.Close()
+				}
+			},
+			resultWin,
+		)
 	})
-	if index == -1 { removeEntryButton.Hide()}
+	if index == -1 {
+		removeEntryButton.Hide()
+	}
 
 	copyTextButton := widget.NewButtonWithIcon("Copy", theme.ContentCopyIcon(), func() {
 		fyne.CurrentApp().Clipboard().SetContent(result.Text)
@@ -118,7 +130,7 @@ func showResultWindow(result scannedCode, callerWin fyne.Window, index int) {
 		closeButton,
 	)
 
-	mainContent := container.NewVBox(titleLabel,form,labelNotEncodeable,qrCanvas)
+	mainContent := container.NewVBox(titleLabel, form, labelNotEncodeable, qrCanvas)
 	mainContentWrapper := container.NewVScroll(mainContent)
 	mainContentWrapper.SetMinSize(mainContent.MinSize())
 	mainContentWithButton := container.NewVBox(mainContentWrapper, buttonStrip)
@@ -146,14 +158,14 @@ func (b *SubtitleButton) CreateRenderer() fyne.WidgetRenderer {
 	title.TextStyle.Bold = true
 	title.SizeName = theme.SizeNameHeadingText
 	title.Truncation = fyne.TextTruncateEllipsis
-	
+
 	sub := widget.NewLabel(b.Subtitle)
 	sub.SizeName = theme.SizeNameText
 	sub.Truncation = fyne.TextTruncateEllipsis
-	
+
 	// Use a container to stack them
 	content := container.NewVBox(title, sub)
-	
+
 	// Wrap in a standard button to get the hover/click effects
 	btn := widget.NewButton("", b.OnTapped)
 
@@ -162,10 +174,14 @@ func (b *SubtitleButton) CreateRenderer() fyne.WidgetRenderer {
 
 func showHistoryWindow() {
 	histroyWin := fyne.CurrentApp().NewWindow("History")
+	HistoryWindow = histroyWin
 	scroll := generateButtonsWithScroll(histroyWin)
 	histroyWin.SetContent(scroll)
 	histroyWin.Resize(fyne.NewSquareSize(600))
 	histroyWin.CenterOnScreen()
+	histroyWin.SetOnClosed(func() {
+		HistoryWindow = nil
+	})
 	histroyWin.Show()
 }
 
@@ -174,8 +190,8 @@ func generateButtons(callerWin fyne.Window) *fyne.Container {
 
 	for i := 0; i < len(scannedHistory); i++ {
 		index := i // capture index
-		var item scannedCode = scannedHistory[index] 
-		button := NewSubtitleButton(item.Text, strconv.FormatInt(item.Timestamp, 10), func ()  {
+		var item scannedCode = scannedHistory[index]
+		button := NewSubtitleButton(item.Text, time.Unix(item.Timestamp, 0).Format(time.RFC3339), func() {
 			showResultWindow(item, callerWin, index)
 		})
 		buttonList.Add(button)
@@ -190,7 +206,7 @@ func generateButtonsWithScroll(callerWin fyne.Window) *container.Scroll {
 }
 
 func isEncodable[T int | gozxing.BarcodeFormat](format T) bool {
-	switch format{
+	switch format {
 	case 1:
 		return true
 	case 2:
@@ -224,7 +240,9 @@ func isEncodable[T int | gozxing.BarcodeFormat](format T) bool {
 func encodeBasedOnFormat(result scannedCode) (image.Image, error) {
 	var encoder gozxing.Writer
 	format := gozxing.BarcodeFormat(result.Format)
-	if !isEncodable(format) {return nil, errors.New("unsupported encoding format: " + format.String())} // cannot encode.
+	if !isEncodable(format) {
+		return nil, errors.New("unsupported encoding format: " + format.String())
+	} // cannot encode.
 	switch format {
 	case gozxing.BarcodeFormat_QR_CODE:
 		encoder = qrcode.NewQRCodeWriter()
@@ -252,7 +270,7 @@ func encodeBasedOnFormat(result scannedCode) (image.Image, error) {
 		return nil, errors.New("unsupported encoding format: " + format.String())
 	}
 
-	matrix, errMatrix := encoder.Encode(result.Text, format, 256,256,nil)
+	matrix, errMatrix := encoder.Encode(result.Text, format, 256, 256, nil)
 	if errMatrix != nil {
 		return nil, errMatrix
 	}

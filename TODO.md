@@ -8,5 +8,5 @@
 - [x] Scan history
   - [x] data involving in history
 - [x] Scan result page
-- [ ] Code Creation Menu
+- [X] Code Creation Menu
 - [ ] Documentation

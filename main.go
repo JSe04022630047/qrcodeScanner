@@ -133,13 +133,15 @@ func main() {
 
 					if err == nil {
 						fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
-						addEntry(*result)
+						addEntryResult(*result)
 						printCurrScanHistory()
-						showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntry always make the latest one the 0
+						showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntryResult always make the latest one the 0
 					} else if _, ok := err.(gozxing.NotFoundException); ok {
 						fmt.Println("qrcode scanned failed, qrcode not found", err)
+						dialog.ShowError(err, mainWindow)
 					} else {
 						fmt.Println("qrcode scanned failed", err)
+						dialog.ShowError(err, mainWindow)
 					}
 				},
 				func() { // user hit cancled or exit
@@ -159,13 +161,16 @@ func main() {
 
 				if err == nil {
 					fmt.Println(result.String(), result.GetBarcodeFormat(), result.GetTimestamp())
-					addEntry(*result)
+					addEntryResult(*result)
 					printCurrScanHistory()
-					showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntry always make the latest one the 0
+					showResultWindow(scannedHistory[0], nil, 0) // sorting from addEntryResult always make the latest one the 0
 				} else if _, ok := err.(gozxing.NotFoundException); ok {
 					fmt.Println("qrcode scanned failed, qrcode not found", err)
+					dialog.ShowError(err, mainWindow)
+
 				} else {
 					fmt.Println("qrcode scanned failed", err)
+					dialog.ShowError(err, mainWindow)
 				}
 			},
 				func() { // user hit cancled or exit
@@ -183,7 +188,7 @@ func main() {
 	HistoryButton = buttonHistory
 
 	buttonCreateQR := widget.NewButtonWithIcon("Create QR Code", theme.DocumentCreateIcon(), func() {
-		// TODO
+		showCreateQRWindow(mainWindow)
 	})
 
 	// main labels

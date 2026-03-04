@@ -69,7 +69,7 @@ func setupHistory() error {
     if err != nil{
         return err
     }
-    errW := os.WriteFile(HistroyFileName, data, 0644)
+    errW := os.WriteFile(HistroyFileName, data, 0644) // this automatically closes the file
     if errW != nil{
         fmt.Println("writing to file encountered error")
         return errW
@@ -149,19 +149,24 @@ func sortHistory(){
     })
 }
 
-func addEntry(result gozxing.Result){
+func addEntryResult(result gozxing.Result){
     entry := scannedCode{
         Text: result.GetText(),
         Timestamp: result.GetTimestamp()/1000, // convert to seconds unix timestamp
         Format: int(result.GetBarcodeFormat()), 
     }
-    scannedHistory = append(scannedHistory, entry)
+    addEntry(entry)
+}
+
+func addEntry(result scannedCode){
+    scannedHistory = append(scannedHistory, result)
     sortHistory()
     if len(scannedHistory) > 50 {
         scannedHistory = scannedHistory[:50] // clamp to 50 entries including index 0
     }                                        // probably going to be configurable in the future
     ChangeHistoryButtonStatus()
 }
+
 
 func removeEntry(index int) {
     scannedHistory = append(scannedHistory[:index], scannedHistory[index+1:]...)
