@@ -308,10 +308,15 @@ func showVersionDialogv2(win fyne.Window) {
 }
 
 func ChangeHistoryButtonStatus() {
-	historyButton := HistoryButton
-	if len(scannedHistory) < 1 {
-		historyButton.Disable()
+	
+	if HistoryWindow == nil {
+		historyButton := HistoryButton
+		if len(scannedHistory) < 1 {
+			historyButton.Disable()
+		} else {
+			historyButton.Enable()
+		}
 	} else {
-		historyButton.Enable()
+		HistoryButton.Disable()
 	}
 }

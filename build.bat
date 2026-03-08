@@ -10,10 +10,13 @@ echo Building QRScan.exe with commit %GIT_HASH%...
 set BUILD_TIME=%date% %time%
 
 :: version, please set before building
-set VERSION="a1"
+set VERSION="r1"
 
 :: Run the build
-go build -ldflags "-H windowsgui -X main.GitCommit=%GIT_HASH% -X 'main.BuildTime=%BUILD_TIME%' -X main.Version=%VERSION%" -o build/QRScan.exe
+go build -ldflags "-s -w -H windowsgui -X main.GitCommit=%GIT_HASH% -X 'main.BuildTime=%BUILD_TIME%' -X main.Version=%VERSION%" -o build/QRScan.exe
+
+:: unused, attempting to use fyne's own packaging tool is really confusing. will have to study further
+@REM fyne package -os windows -icon icon.png -exe build/QRScan2.exe -options "-ldflags \"-s -w -H windowsgui -X main.GitCommit=%GIT_HASH% -X 'main.BuildTime=%BUILD_TIME%' -X main.Version=%VERSION%\""
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

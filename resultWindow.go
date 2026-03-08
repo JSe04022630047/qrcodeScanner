@@ -181,8 +181,10 @@ func showHistoryWindow() {
 	histroyWin.CenterOnScreen()
 	histroyWin.SetOnClosed(func() {
 		HistoryWindow = nil
+		ChangeHistoryButtonStatus()
 	})
 	histroyWin.Show()
+	ChangeHistoryButtonStatus()
 }
 
 func generateButtons(callerWin fyne.Window) *fyne.Container {
